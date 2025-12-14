@@ -128,6 +128,7 @@ class SuperTuxKartEnvConfig:
     agent_name: str = "RL-Agent"
     agent_use_ai: bool = False
     agent_camera_mode: CameraMode = CameraMode.AUTO  # type: ignore
+    with_graphics: bool = False
 
     def build_agent(self) -> AgentSpec:
         """Return a configured `AgentSpec` instance for environment creation."""
@@ -188,7 +189,8 @@ def make_supertux_env(config: Optional[SuperTuxKartEnvConfig] = None) -> gym.Env
             f"Valid values: {sorted(SUPPORTED_ENV_IDS)}"
         )
 
-    return gym.make(config.env_id, agent=config.build_agent(), **config.to_make_kwargs())
+    env = gym.make(config.env_id, agent=config.build_agent(), **config.to_make_kwargs())
+    return env
 
 
 # ---------------------------------------------------------------------------
