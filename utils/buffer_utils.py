@@ -258,12 +258,10 @@ def transitions_to_batch_sequence(batchSeqs, Lmax, device, box_obs=box_obs, seq_
             # ---------- box obs ----------
             if k in box_obs:
                 a = [torch.tensor(t.states[k]) for t in transitions]
-                box_obs_padded, mask = pad_temporal_others(a)
-                temp_box_obs.append(box_obs_padded)
+                temp_box_obs.append(torch.stack(a))
 
                 next_a = [torch.tensor(t.next_states[k]) for t in transitions]
-                box_next_padded, mask_n = pad_temporal_others(next_a)
-                temp_next_box_obs.append(box_next_padded)
+                temp_next_box_obs.append(torch.stack(next_a))
 
             # ---------- seq obs ----------
             elif k in seq_obs:
