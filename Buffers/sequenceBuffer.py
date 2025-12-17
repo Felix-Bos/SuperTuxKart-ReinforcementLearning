@@ -46,8 +46,11 @@ class sequenceReplayBuffer(ReplayBuffer):
     def can_sample(self, batch_size: int) -> bool:
         return len(self.valid_starts) >= batch_size
 
-    def sample(self, batch_size: int):
-        idxs = torch.randint(0, len(self.valid_starts), (batch_size,))
+    def sample(self, batch_size: int, recent:bool=False):
+        if recent:
+            idxs = self.valid_starts[-batch_size:]
+        else:
+            idxs = torch.randint(0, len(self.valid_starts), (batch_size,))
         batches = []
 
         for i in idxs:

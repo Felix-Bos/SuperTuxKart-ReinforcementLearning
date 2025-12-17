@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 @dataclass
+
 class ValueOutput:
     value: Any                   # V(s) or Q(s,a)
     new_hidden: Optional[Any]    # for recurrent critics

@@ -285,56 +285,59 @@ def transitions_to_batch_sequence(batchSeqs, Lmax, device, box_obs=box_obs, seq_
     for k in action_keys:
         
         temp_cont_actions = [] 
-        temp_cont_t_mask = []
         temp_disc_actions = []
-        temp_disc_t_mask = [] 
         for transitions in batchSeqs:
             if k in continuous_action_keys:
-                cont_pad, cont_mask = pad_temporal_others(
+                cont_pad = torch.stack(
                     [torch.tensor(t.action[k]).squeeze() for t in transitions]
                 )
                 temp_cont_actions.append(cont_pad)
-                temp_cont_t_mask.append(cont_mask)
 
 
             if k in discrete_action_keys:
-                disc_pad, disc_t_mask = pad_temporal_others(
+                disc_pad = torch.stack(
                     [torch.tensor(t.action[k]).squeeze() for t in transitions]
                 )
                 temp_disc_actions.append(disc_pad)
-                temp_disc_t_mask.append(disc_t_mask)
 
         if k in continuous_action_keys:
             cont_actions[k] = torch.stack(temp_cont_actions, dim=0).to(device)
-            cont_actions_mask[k] = torch.stack(temp_cont_t_mask, dim=0).to(device)
         elif k in discrete_action_keys:
             disc_actions[k] = torch.stack(temp_disc_actions, dim=0).to(device)
-            disc_actions_mask[k] = torch.stack(temp_disc_t_mask, dim=0).to(device)
 
-    # ---------- core RL signals ----------
-    rewards = [torch.tensor([t.reward for t in transitions], device=device)]
-    rewards, rewards_mask = pad_temporal_others(rewards)
-    dones = [torch.tensor(
-        [t.terminated or t.truncated for t in transitions],
-        dtype=torch.bool,
-        device=device,
-    )]
-    dones, doens_mask = pad_temporal_others(dones)
+    keys = ['log_prob', 'value', 'hidden', 'next_hidden']
+    extras_batch = {key: [] for key in keys}
+    reward_batch = []
+    dones_batch = []
 
+    for transitions in batchSeqs:
+        extras = {k: [] for k in keys} # pre-allocation
 
-    # ---------- extras ----------
-    extras = {}
-    extras_mask = {}
-    if transitions[0].log_prob is not None:
-        extras["log_prob"], extras_mask['log_prob'] = pad_temporal_others([torch.tensor([t.log_prob for t in transitions]).to(device)])
-    if transitions[0].value is not None:
-        extras["value"], extras_mask['value'] = pad_temporal_others(torch.tensor([t.value for t in transitions]).to(device))
-    if transitions[0].hidden is not None:
-        extras["hidden"], extras_mask['hidden'] = pad_temporal_others(torch.tensor([t.hidden for t in transitions]).to(device))
-    if transitions[0].next_hidden is not None:
-        extras["next_hidden"], extras_mask["next_hidden"] = pad_temporal_others(torch.tensor(
-            [t.next_hidden for t in transitions]
-        ).to(device))
+        # ---------- core RL signals ----------
+        rewards = torch.stack([torch.tensor(t.reward, device=device) for t in transitions])
+        reward_batch.append(rewards)
+        dones = torch.stack([
+            torch.tensor(( t.terminated | t.truncated ), dtype=torch.bool, device=device)  for t in transitions]
+        )
+        dones_batch.append(dones)
+
+        # ---------- extras ----------
+        if transitions[0].log_prob is not None:
+            extras["log_prob"].append(torch.stack([t.log_prob for t in transitions]))
+        if transitions[0].value is not None:
+            extras["value"].append(torch.stack([t.value for t in transitions]))
+        if transitions[0].hidden is not None:
+            extras["hidden"].append(torch.stack([t.hidden for t in transitions]))
+        if transitions[0].next_hidden is not None:
+            extras["next_hidden"].append(torch.stack(
+                [t.next_hidden for t in transitions]
+            ))
+    for k, v in extras.items():
+        if v:
+            extras_batch[k] = torch.stack(v, dim=0).to(device)
+
+    reward_batch = torch.stack(reward_batch, dim=0).to(device)
+    done_batch = torch.stack(dones_batch, dim=0).to(device)
 
     return Batch(
         box_obs=box_obs,
@@ -342,15 +345,10 @@ def transitions_to_batch_sequence(batchSeqs, Lmax, device, box_obs=box_obs, seq_
         seq_mask=seq_mask,
         next_seq_mask=next_seq_mask,
         cont_actions=cont_actions,
-        cont_actions_mask=cont_actions_mask,
         disc_actions=disc_actions,
-        disc_actions_mask=disc_actions_mask,
-        rewards=rewards,
-        reward_masks=rewards_mask,
-        dones=dones,
-        done_masks=doens_mask,
+        rewards=reward_batch,
+        dones=done_batch,
         next_box_obs=next_box_obs,
         next_seq_obs=next_seq_obs,
         extras=extras,
-        extras_mask=extras_mask,
     )

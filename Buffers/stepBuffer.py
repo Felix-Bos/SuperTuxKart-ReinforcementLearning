@@ -19,7 +19,7 @@ class stepReplayBuffer(ReplayBuffer):
     def can_sample(self, batch_size: int) -> bool:
         return len(self.storage) >= batch_size
 
-    def sample(self, batch_size: int):
+    def sample(self, batch_size: int, recent:bool=False) -> Batch:
         
         assert self.can_sample(batch_size), "Not enough samples to draw from the buffer."
 

@@ -12,9 +12,6 @@ class Transition:
     truncated: Optional[bool] = None
     terminated: Optional[bool] = None
 
-    episode_id: Optional[int] = None
-    step_id: Optional[int] = None
-
     log_prob: Optional[Any] = None
     value: Optional[Any] = None
     hidden: Optional[Any] = None

@@ -40,8 +40,12 @@ class episodeReplayBuffer(ReplayBuffer):
     def can_sample(self, batch_size: int) -> bool:
         return len(self.episodes) >= batch_size
 
-    def sample(self, batch_size: int):
-        idxs = torch.randint(0, len(self.episodes), (batch_size,))
+    def sample(self, batch_size: int, recent:bool=False):
+        assert self.can_sample(batch_size), "Not enough episodes to draw from the buffer."
+        if recent:
+            idxs = self.episodes[-1]
+        else:
+            idxs = torch.randint(0, len(self.episodes), (batch_size,))
         batches = []
 
         for i in idxs:
